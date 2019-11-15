@@ -10,7 +10,6 @@ S = 60
 # Frames per second of the pygame window display
 FPS = 25
 
-
 face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
 
@@ -92,30 +91,34 @@ class FrontEnd(object):
 
             self.screen.fill([0, 0, 0])
             frame = cv2.cvtColor(frame_read.frame, cv2.COLOR_BGR2RGB)
-            frame = np.rot90(frame)
-            frame = np.flipud(frame)
-			
-            gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             for (x,y,w,h) in faces:
-                frame = cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),2)
-                roi_gray = gray.adjustROI(y,y+h, x,x+w)
-                roi_color = frame.adjustROI(y,y+h, x,x+w)
+                img = cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
+                roi_gray = gray[y:y+h, x:x+w]
+                roi_color = img[y:y+h, x:x+w]
                 eyes = eye_cascade.detectMultiScale(roi_gray)
                 for (ex,ey,ew,eh) in eyes:
                     cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
 			
 			
-            cv2.imshow('frame', frame)
-            #frame = pygame.surfarray.make_surface(frame)
+			
+            frame = np.rot90(frame)
+            frame = np.flipud(frame)
+			
+            frame = pygame.surfarray.make_surface(frame)
             self.screen.blit(frame, (0, 0))
             pygame.display.update()
+            cv2.imshow('img', img)
 
             time.sleep(1 / FPS)
 
         # Call it always before finishing. I deallocate resources.
         self.tello.end()
+        cv2.destroyAllWindows()
 
     def keydown(self, key):
         """ Update velocities based on key pressed
@@ -138,6 +141,8 @@ class FrontEnd(object):
             self.yaw_velocity = -S
         elif key == pygame.K_d:  # set yaw counter clockwise velocity
             self.yaw_velocity = S
+        elif key == pygame.K_r:		#release R to make the drone flip to the right (flex)
+            self.tello.flip_right
 			
 
     def keyup(self, key):
@@ -162,8 +167,6 @@ class FrontEnd(object):
         elif key == pygame.K_e:		#release E to turn off all motors (for our automated landing)
             self.tello.emergency()
             self.send_rc_control = False
-        elif key == pygame.K_r:		#release R to make the drone flip to the right (flex)
-            self.tello.flip_right
 
     def update(self):
         """ Update routine. Send velocities to Tello."""
