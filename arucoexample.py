@@ -3,10 +3,12 @@ import sys
 import os 
 import cv2 
 from cv2 import aruco 
-import numpy as np 
+import numpy as np
 
 # to start real-time feed 
 cap = cv2.VideoCapture(0) 
+
+font = cv2.FONT_HERSHEY_SIMPLEX
 
 # importing aruco dictionary 
 dictionary = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250) 
@@ -68,9 +70,10 @@ while True:
 
 	# Detect aruco 
 	res = cv2.aruco.detectMarkers(imgRemapped_gray, aruco_dict, parameters = arucoParams) 
-	imgWithAruco = imgRemapped_gray # assign imRemapped_color to imgWithAruco directly 
-	if len(res[0]) > 0: 
-		print (res[0]) 
+	#imgWithAruco = imgRemapped_gray # assign imRemapped_color to imgWithAruco directly 
+	imgWithAruco = frame
+	#if len(res[0]) > 0: 
+		#print (res[0]) 
 
 	# Corner detection		 
 	# print res[0][0][0][0][0], " ", res[0][0][0][0][1] 
@@ -102,6 +105,12 @@ while True:
 
 		imgWithAruco = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10) 
 		cameraPose = cameraPoseFromHomography(h) 
+		#print(rvec[0][0],rvec[0][1],rvec[0][2])
+		print(tvec[0][0][0],tvec[0][0][1],tvec[0][0][2])
+		
+		
+		
+		imgWithAruco = cv2.putText(imgWithAruco, str(tvec[0][0]), (100,100), font, .5, (255,255,255), 10, 8)
 		
 
 	cv2.imshow("aruco", imgWithAruco) # display 
