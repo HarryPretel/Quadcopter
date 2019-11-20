@@ -197,9 +197,9 @@ class FrontEnd(object):
 				else:
 					self.up_down_velocity = 0
 				if tvec[0][0][0]>XHI:
-					self.left_right_velocity = -S
+					self.yaw_velocity = -S
 				elif tvec[0][0][0]<XLO:
-					self.left_right_velocity = S
+					self.yaw_velocity = S
 				else:
 					self.left_right_velocity = 0
 				hover = 0

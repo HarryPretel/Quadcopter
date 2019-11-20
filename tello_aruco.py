@@ -24,7 +24,7 @@ new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat()
 markerLength = 0.25 # Here, our measurement unit is centimetre. 
 arucoParams = cv2.aruco.DetectorParameters_create() 
 
-
+hover = 1
 
 # Speed of the drone
 S = 60
@@ -149,8 +149,8 @@ class FrontEnd(object):
 			avg2 = np.float32(gray) 
 			res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = arucoParams) 
 			imgWithAruco = gray # assign imRemapped_color to imgWithAruco directly 
-			if len(res[0]) > 0: 
-				print (res[0]) 
+			#if len(res[0]) > 0: 
+				#print (res[0]) 
 			
 
 			focal_length = size[1] 
@@ -172,7 +172,7 @@ class FrontEnd(object):
 				imgWithAruco = cv2.warpPerspective(im_src, h, (im_dst.shape[1], im_dst.shape[0])) 
 
 				rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(res[0], markerLength, camera_matrix, dist_coeffs) 
-
+				print(tvec[0][0][0],tvec[0][0][1],tvec[0][0][2])
 				img = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10) 
 				cameraPose = cameraPoseFromHomography(h) 
 
