@@ -6,13 +6,8 @@ import numpy as np
 import time
 import sys
 import os
+import matplotlib.pyplot as plt
 
-ZHI = 50
-ZLO = 30
-YHI = 5
-YLO = -2.5
-XHI = 2.5 
-XLO = -5
 
 
 
@@ -31,14 +26,14 @@ new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat()
 
 
 #might need to be adjusted when used w real arucos
-markerLength = 10 # Here, our measurement unit is centimetre. 
+markerLength = 2 # Here, our measurement unit is centimetre. 
 arucoParams = cv2.aruco.DetectorParameters_create() 
 
 
 # Speed of the drone
 S = 30
 # Frames per second of the pygame window display
-FPS = 25
+FPS = 100
 
 face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
@@ -110,7 +105,7 @@ class FrontEnd(object):
 	def run(self):
 
 
-		kp_x = .25;
+		kp_x = .15;
 		ki_x = 0;
 		kd_x =  .05;
 		
@@ -118,7 +113,7 @@ class FrontEnd(object):
 		ki_y = 0;
 		kd_y =  .1;
 		
-		kp_z = .5;
+		kp_z = .4;
 		ki_z = 0;
 		kd_z =  .1;
 
@@ -133,12 +128,22 @@ class FrontEnd(object):
 		integral_x = 0;
 		integral_y = 0;
 		integral_z = 0;
+		
+		t = 0;
 
-
+		plt.plot(t, kp_x, 'r--', t, kp_y, 'bs', t, kp_z, 'g^')
+		plt.ion()
+		plt.show()
+		plt.pause(0.001)
+		t = t + 0.001;
 
 		desired_x = 0;
 		desired_y = 0;
-		desired_z = 75;
+		desired_z = 25;
+		
+		x_land = 0;
+		y_land = 0;
+		z_land = 0;
 		
 		
 		if not self.tello.connect():
@@ -224,6 +229,13 @@ class FrontEnd(object):
 				y = tvec[0][0][1];
 				z = tvec[0][0][2];
 				
+				plt.subplot(311)
+				plt.plot(t, x, 'rs')
+				plt.subplot(312)
+				plt.plot(t, y, 'gs');
+				plt.subplot(313)
+				plt.plot(t, z, 'bs');
+				
 				iteration_time = 1/FPS;
 				
 				error_x = desired_x - x;
@@ -274,12 +286,14 @@ class FrontEnd(object):
 				
 					
 				self.left_right_velocity = int(-output_x);
-				if output_x>10 or output_x<-10:
-					self.yaw_velocity = int(-output_x);
+				self.yaw_velocity = int(-output_x);
 				
 				self.up_down_velocity = int(output_y);
 				self.for_back_velocity = int(-output_z);
 				
+				if x < desired_x + x_land and x > desired_x - x_land and y < desired_y + y_land and y > desired_y - y_land and z < desired_z + z_land and z > desired_z - z_land:
+					self.tello.emergency()
+					self.send_rc_control = False
 				
 				print("x: ",x,"y:",y,"z:",z,"dz",-output_z,sep="\t")
 				
@@ -318,8 +332,9 @@ class FrontEnd(object):
 			self.screen.blit(frame, (0, 0))
 			pygame.display.update()
 			#cv2.imshow('img', img)
-
-			time.sleep(1 / FPS)
+			plt.show()
+			plt.pause(1 / FPS)
+			t = t + 1/FPS;
 
 		# Call it always before finishing. I deallocate resources.
 		self.tello.end()
