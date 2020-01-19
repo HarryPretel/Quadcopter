@@ -10,31 +10,23 @@ import matplotlib.pyplot as plt
 
 
 
+FPS = 100	# 1/FPS seconds = time program pauses between frames
+markerLength = 2 # 2 cm = phone; 10 cm = printout
 
 
-#aruco dict
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_1000) 
+#aruco dictionary
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_1000) #markers w/ id 1-1000 may be used
+arucoParams = cv2.aruco.DetectorParameters_create() 
 
 #calibration setup
 calibrationFile = "calibrationFileName.xml"
 calibrationParams = cv2.FileStorage(calibrationFile, cv2.FILE_STORAGE_READ) 
 camera_matrix = calibrationParams.getNode("cameraMatrix").mat() 
 dist_coeffs = calibrationParams.getNode("distCoeffs").mat() 
-
 r = calibrationParams.getNode("R").mat() 
 new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat() 
 
-
-#might need to be adjusted when used w real arucos
-markerLength = 2 # Here, our measurement unit is centimetre. 
-arucoParams = cv2.aruco.DetectorParameters_create() 
-
-
-# Speed of the drone
-S = 30
-# Frames per second of the pygame window display
-FPS = 100
-
+#facial detection setup
 face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
 
@@ -83,7 +75,7 @@ class FrontEnd(object):
 
 		# Creat pygame window
 		pygame.display.set_caption("Tello video stream")
-		self.screen = pygame.display.set_mode([960, 720])
+		self.screen = pygame.display.set_mode([960, 720]) # ((width, height) of window))
 
 		# Init Tello object that interacts with the Tello drone
 		self.tello = Tello()
@@ -104,10 +96,12 @@ class FrontEnd(object):
 
 	def run(self):
 
+		#todo: change to arrays to reduce xyz
 
-		kp_x = .15;
-		ki_x = 0;
-		kd_x =  .05;
+		#X direction
+		kp_x = .15; #proportional constant
+		ki_x = 0;	#integral constant
+		kd_x =  .05;	#derivative constant
 		
 		kp_y = .5;
 		ki_y = 0;
@@ -129,18 +123,22 @@ class FrontEnd(object):
 		integral_y = 0;
 		integral_z = 0;
 		
-		t = 0;
+		t = 0;	#time (used for plotting)
 
-		plt.plot(t, kp_x, 'r--', t, kp_y, 'bs', t, kp_z, 'g^')
-		plt.ion()
+		plt.plot(t, kp_x, 'r--', t, kp_y, 'bs', t, kp_z, 'g^') #todo: remove
+		
+		plt.ion() #interactive mode on
 		plt.show()
+		
 		plt.pause(0.001)
 		t = t + 0.001;
 
+		#desired xyz distance from aruco
 		desired_x = 0;
 		desired_y = 0;
 		desired_z = 25;
 		
+		#range needed within desired to cut motors + attempt landing
 		x_land = 0;
 		y_land = 0;
 		z_land = 0;
@@ -166,7 +164,6 @@ class FrontEnd(object):
 		frame_read = self.tello.get_frame_read()
 
 		should_stop = False
-		hover = 0
 		while not should_stop:
 
 			for event in pygame.event.get():
@@ -299,20 +296,6 @@ class FrontEnd(object):
 				
 				#consider using gain scheduling (different sets of terms based on different speeds
 				
-				"""
-				if tvec[0][0][1]>YHI:
-					self.up_down_velocity = S
-				elif tvec[0][0][1]<YLO:
-					self.up_down_velocity = -S
-				else:
-					self.up_down_velocity = 0
-				if tvec[0][0][0]>XHI:
-					self.yaw_velocity = -S
-				elif tvec[0][0][0]<XLO:
-					self.yaw_velocity = S
-				else:
-					self.left_right_velocity = 0
-				"""
 				
 			faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 			for (x,y,w,h) in faces:
@@ -331,12 +314,13 @@ class FrontEnd(object):
 			frame = pygame.surfarray.make_surface(frame)
 			self.screen.blit(frame, (0, 0))
 			pygame.display.update()
-			#cv2.imshow('img', img)
+			
+			#xyz graphing
 			plt.show()
 			plt.pause(1 / FPS)
 			t = t + 1/FPS;
 
-		# Call it always before finishing. I deallocate resources.
+		#deallocate resources.
 		self.tello.end()
 		cv2.destroyAllWindows()
 
