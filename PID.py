@@ -8,7 +8,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 
-
+#todo: readme for project
 
 FPS = 100	# 1/FPS seconds = time program pauses between frames
 markerLength = 2 # 2 cm = phone; 10 cm = printout
@@ -96,52 +96,21 @@ class FrontEnd(object):
 
 	def run(self):
 
-		#todo: change to arrays to reduce xyz
-
-		#X direction
-		kp_x = .15; #proportional constant
-		ki_x = 0;	#integral constant
-		kd_x =  .05;	#derivative constant
+		kp_xyz = [.15,.5,.4]	#proportional constants
+		ki_xyz = [0,0,0]		#integral constants
+		kd_xyz = [.05,.1,.1]	#derivative constants
 		
-		kp_y = .5;
-		ki_y = 0;
-		kd_y =  .1;
+		desired_xyz = [0,0,0]	#desired xyz distance from aruco
+		land_xyz = [0,0,0] 		#range needed within desired to cut motors + attempt landing
 		
-		kp_z = .4;
-		ki_z = 0;
-		kd_z =  .1;
-
-		bias_x = 0;
-		bias_y = 0;
-		bias_z = 0;
-
-		prev_error_x = 0;
-		prev_error_y = 0;
-		prev_error_z = 0;
-
-		integral_x = 0;
-		integral_y = 0;
-		integral_z = 0;
-		
-		t = 0;	#time (used for plotting)
-
-		plt.plot(t, kp_x, 'r--', t, kp_y, 'bs', t, kp_z, 'g^') #todo: remove
+		bias_xyz = [0,0,0]		
+		integral_xyz = [0,0,0]
+		prev_error_xyz = [0,0,0]
 		
 		plt.ion() #interactive mode on
-		plt.show()
-		
+		t = 0;	#time (used for plotting)
 		plt.pause(0.001)
 		t = t + 0.001;
-
-		#desired xyz distance from aruco
-		desired_x = 0;
-		desired_y = 0;
-		desired_z = 25;
-		
-		#range needed within desired to cut motors + attempt landing
-		x_land = 0;
-		y_land = 0;
-		z_land = 0;
 		
 		
 		if not self.tello.connect():
@@ -222,9 +191,10 @@ class FrontEnd(object):
 				cameraPose = cameraPoseFromHomography(h) 
 				
 				#PID controller
-				x = tvec[0][0][0];
-				y = tvec[0][0][1];
-				z = tvec[0][0][2];
+				
+				xyz[0] = tvec[0][0][0];
+				xyz[1] = tvec[0][0][1];
+				xyz[2] = tvec[0][0][2];
 				
 				plt.subplot(311)
 				plt.plot(t, x, 'rs')
@@ -235,62 +205,36 @@ class FrontEnd(object):
 				
 				iteration_time = 1/FPS;
 				
-				error_x = desired_x - x;
-				integral_x = integral_x + (error_x * iteration_time );
-				derivative_x = (error_x - prev_error_x) / iteration_time;
-				output_x = kp_x*error_x + ki_x*integral_x + kd_x*derivative_x + bias_x;
-				prev_error_x = error_x;
-				
-				error_y = desired_y - y;
-				integral_y = integral_y + (error_y * iteration_time );
-				derivative_y = (error_y - prev_error_y) / iteration_time;
-				output_y = kp_y*error_y + ki_y*integral_y + kd_y*derivative_y + bias_y;
-				prev_error_y = error_y;
-				
-				error_z = desired_z - z;
-				integral_z = integral_z + (error_z * iteration_time );
-				derivative_z = (error_z - prev_error_z) / iteration_time;
-				output_z = kp_z*error_z + ki_z*integral_z + kd_z*derivative_z + bias_z;
-				prev_error_z = error_z;
-				
-				#speed can only be 10-100, if outside of range, set to 10 or 100
-				if output_x>100:
-					output_x = 100;
-				elif output_x<-100:
-					output_x = -100;
-				elif output_x<10 and output_x>0:
-					output_x = 10;
-				elif output_x>-10 and output_x<0:
-					output_x = -10;
-				
-				if output_y>100:
-					output_y = 100;
-				elif output_y<-100:
-					output_y = -100;
-				elif output_y<10 and output_y>0:
-					output_y = 10;
-				elif output_y>-10 and output_y<0:
-					output_y = -10;
-				
-				if output_z>100:
-					output_z = 100;
-				elif output_z<-100:
-					output_z = -100;
-				elif output_z<10 and output_z>0:
-					output_z = 10;
-				elif output_z>-10 and output_z<0:
-					output_z = -10;
+				for i in range(3):
+					error_xyz[i] = desired_xyz[i] - xyz[i]
+					integral_xyz[i] = integral_xyz[i] + (error_xyz[i] * iteration_time)
+					derivative_xyz[i] = (error_xyz[i] - prev_error_xyz[i])
+					output_xyz[i] = kp_xyz[i]*error_xyz[i] + ki_xyz[i]*integral_xyz[i] + kd_xyz[i]*derivative_xyz[i] + bias_xyz[i]
+					prev_error_xyz[i] = error_xyz[i]
+					
+					#speed can only be 10-100, if outside of range, set to 10 or 100
+					if output_xyz[i] > 100:
+						output_xyz[i] = 100;
+					elif output_xyz[i] < -100:
+						output_xyz[i] = -100
+					elif output_xyz[i]<10 and output_xyz[i]>0:
+						output_xyz[i] = 10;
+					elif output_xyz[i]>-10 and output_xyz[i]<0:
+						output_xyz[i] = -10;
 				
 					
-				self.left_right_velocity = int(-output_x);
-				self.yaw_velocity = int(-output_x);
+				self.left_right_velocity = int(-output_xyz[0]);
+				self.yaw_velocity = int(-output_xyz[0]);
 				
-				self.up_down_velocity = int(output_y);
-				self.for_back_velocity = int(-output_z);
+				self.up_down_velocity = int(output_xyz[1]);
+				self.for_back_velocity = int(-output_xyz[2]);
 				
+				"""todo: update to arrays
 				if x < desired_x + x_land and x > desired_x - x_land and y < desired_y + y_land and y > desired_y - y_land and z < desired_z + z_land and z > desired_z - z_land:
 					self.tello.emergency()
 					self.send_rc_control = False
+				"""
+				
 				
 				print("x: ",x,"y:",y,"z:",z,"dz",-output_z,sep="\t")
 				
