@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 #todo: readme for project
 
 FPS = 100	# 1/FPS seconds = time program pauses between frames
-markerLength = 2 # 2 cm = phone; 10 cm = printout
+markerLength = 10 # 2 cm = phone; 10 cm = printout
 
 
 #aruco dictionary
@@ -95,6 +95,18 @@ class FrontEnd(object):
 
 
 	def run(self):
+		if not self.tello.connect():
+			print("Tello not connected")
+			return
+		if not self.tello.set_speed(self.speed):
+			print("Not set speed to lowest possible")
+			return
+		if not self.tello.streamoff():# In case streaming is on. This happens when we quit this program without the escape key.
+			print("Could not stop video stream")
+			return
+		if not self.tello.streamon():
+			print("Could not start video stream")
+			return
 
 		kp_xyz = [.15,.5,.4]	#proportional constants
 		ki_xyz = [0,0,0]		#integral constants
@@ -113,22 +125,7 @@ class FrontEnd(object):
 		t = t + 0.001;
 		
 		
-		if not self.tello.connect():
-			print("Tello not connected")
-			return
 
-		if not self.tello.set_speed(self.speed):
-			print("Not set speed to lowest possible")
-			return
-
-		# In case streaming is on. This happens when we quit this program without the escape key.
-		if not self.tello.streamoff():
-			print("Could not stop video stream")
-			return
-
-		if not self.tello.streamon():
-			print("Could not start video stream")
-			return
 
 		frame_read = self.tello.get_frame_read()
 
@@ -153,9 +150,8 @@ class FrontEnd(object):
 				break
 
 			self.screen.fill([0, 0, 0])
-			frame = cv2.cvtColor(frame_read.frame, cv2.COLOR_BGR2RGB)
 			
-			img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+			img = frame_read.frame
 			gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 			size = img.shape
 			
@@ -163,7 +159,7 @@ class FrontEnd(object):
 			avg1 = np.float32(gray) 
 			avg2 = np.float32(gray) 
 			res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = arucoParams) 
-			imgWithAruco = gray # assign imRemapped_color to imgWithAruco directly 
+			imgWithAruco = img # assign imRemapped_color to imgWithAruco directly 
 			#if len(res[0]) > 0: 
 				#print (res[0]) 
 			
@@ -236,26 +232,18 @@ class FrontEnd(object):
 				"""
 				
 				
-				print("x: ",x,"y:",y,"z:",z,"dz",-output_z,sep="\t")
+				print("x: ",xyz[0],"y:",xyz[1],"z:",xyz[2],sep="\t")
 				
-				#consider using gain scheduling (different sets of terms based on different speeds
+				#consider using gain scheduling (different constants at different distances)
 				
 				
-			faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-			for (x,y,w,h) in faces:
-				img = cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
-				roi_gray = gray[y:y+h, x:x+w]
-				roi_color = img[y:y+h, x:x+w]
-				eyes = eye_cascade.detectMultiScale(roi_gray)
-				for (ex,ey,ew,eh) in eyes:
-					cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
-			
+
 			
 			img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 			frame = np.rot90(img)
 			frame = np.flipud(frame)
-			
 			frame = pygame.surfarray.make_surface(frame)
+			
 			self.screen.blit(frame, (0, 0))
 			pygame.display.update()
 			

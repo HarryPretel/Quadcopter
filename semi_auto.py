@@ -7,13 +7,11 @@ import time
 import sys
 import os
 
-ZHI = 50
-ZLO = 30
-YHI = 5
-YLO = -2.5
-XHI = 2.5 
-XLO = -5
+autopilot = False;
 
+#might need to be adjusted when used w real arucos
+markerLength = 10 # Here, our measurement unit is centimetre. 
+arucoParams = cv2.aruco.DetectorParameters_create() 
 
 #aruco dict
 aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250) 
@@ -27,16 +25,12 @@ dist_coeffs = calibrationParams.getNode("distCoeffs").mat()
 r = calibrationParams.getNode("R").mat() 
 new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat() 
 
-
-#might need to be adjusted when used w real arucos
-markerLength = 3 # Here, our measurement unit is centimetre. 
-arucoParams = cv2.aruco.DetectorParameters_create() 
-
-
 # Speed of the drone
-S = 30
+S = 60
+
 # Frames per second of the pygame window display
 FPS = 25
+
 
 face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
@@ -99,11 +93,44 @@ class FrontEnd(object):
 		self.speed = 10
 
 		self.send_rc_control = False
-
+		
+		
 		# create update timer
 		pygame.time.set_timer(USEREVENT + 1, 50)
 
 	def run(self):
+	
+		kp_x = .25;
+		ki_x = 0;
+		kd_x =  .05;
+		
+		kp_y = .5;
+		ki_y = 0;
+		kd_y =  .1;
+		
+		kp_z = .5;
+		ki_z = 0;
+		kd_z =  .1;
+
+		bias_x = 0;
+		bias_y = 0;
+		bias_z = 0;
+
+		prev_error_x = 0;
+		prev_error_y = 0;
+		prev_error_z = 0;
+
+		integral_x = 0;
+		integral_y = 0;
+		integral_z = 0;
+
+
+
+		desired_x = 0;
+		desired_y = 0;
+		desired_z = 75;
+		
+		
 
 		if not self.tello.connect():
 			print("Tello not connected")
@@ -123,9 +150,9 @@ class FrontEnd(object):
 			return
 
 		frame_read = self.tello.get_frame_read()
+		
 
 		should_stop = False
-		hover = 0
 		while not should_stop:
 
 			for event in pygame.event.get():
@@ -168,7 +195,7 @@ class FrontEnd(object):
 							[0, focal_length, center[1]], 
 							[0, 0, 1]], dtype = "double"
 							) 
-			
+
 			if res[1] != None: # if aruco marker detected 
 				im_src = imgWithAruco 
 				im_dst = imgWithAruco 
@@ -183,31 +210,72 @@ class FrontEnd(object):
 				print(tvec[0][0][0],tvec[0][0][1],tvec[0][0][2])
 				img = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10) 
 				cameraPose = cameraPoseFromHomography(h) 
+
+				if autopilot:
+					#PID controller
+					x = tvec[0][0][0];
+					y = tvec[0][0][1];
+					z = tvec[0][0][2];
 				
-				if tvec[0][0][2]>ZHI:
-					self.for_back_velocity = -S
-				elif tvec[0][0][2]<ZLO:
-					self.for_back_velocity = S
-				else:
-					self.for_back_velocity = 0
-				if tvec[0][0][1]>YHI:
-					self.up_down_velocity = S
-				elif tvec[0][0][1]<YLO:
-					self.up_down_velocity = -S
-				else:
-					self.up_down_velocity = 0
-				if tvec[0][0][0]>XHI:
-					self.left_right_velocity = -S
-				elif tvec[0][0][0]<XLO:
-					self.left_right_velocity = S
-				else:
-					self.left_right_velocity = 0
-				hover = 0
-			hover = hover + 1
-			if hover==1:
-				self.for_back_velocity = -self.for_back_velocity
-				self.left_right_velocity = -self.left_right_velocity
-				self.up_down_velocity = -self.up_down_velocity
+					iteration_time = 1/FPS;
+				
+					error_x = desired_x - x;
+					integral_x = integral_x + (error_x * iteration_time );
+					derivative_x = (error_x - prev_error_x) / iteration_time;
+					output_x = kp_x*error_x + ki_x*integral_x + kd_x*derivative_x + bias_x;
+					prev_error_x = error_x;
+				
+					error_y = desired_y - y;
+					integral_y = integral_y + (error_y * iteration_time );
+					derivative_y = (error_y - prev_error_y) / iteration_time;
+					output_y = kp_y*error_y + ki_y*integral_y + kd_y*derivative_y + bias_y;
+					prev_error_y = error_y;
+				
+					error_z = desired_z - z;
+					integral_z = integral_z + (error_z * iteration_time );
+					derivative_z = (error_z - prev_error_z) / iteration_time;
+					output_z = kp_z*error_z + ki_z*integral_z + kd_z*derivative_z + bias_z;
+					prev_error_z = error_z;
+				
+					#speed can only be 10-100, if outside of range, set to 10 or 100
+					if output_x>100:
+						output_x = 100;
+					elif output_x<-100:
+						output_x = -100;
+						"""
+					elif output_x<10 and output_x>0:
+						output_x = 10;
+					elif output_x>-10 and output_x<0:
+						output_x = -10;
+						"""
+				
+					if output_y>100:
+						output_y = 100;
+					elif output_y<-100:
+						output_y = -100;
+					elif output_y<10 and output_y>0:
+						output_y = 10;
+					elif output_y>-10 and output_y<0:
+						output_y = -10;
+				
+					if output_z>100:
+						output_z = 100;
+					elif output_z<-100:
+						output_z = -100;
+					elif output_z<10 and output_z>0:
+						output_z = 10;
+					elif output_z>-10 and output_z<0:
+						output_z = -10;
+				
+					
+					self.left_right_velocity = int(-output_x);
+					if output_x>10 or output_x<-10:
+						self.yaw_velocity = int(-output_x);
+				
+					self.up_down_velocity = int(output_y);
+					self.for_back_velocity = int(-output_z);
+
+
 			faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 			for (x,y,w,h) in faces:
 				img = cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
@@ -238,7 +306,27 @@ class FrontEnd(object):
 		Arguments:
 			key: pygame key
 		"""
-		
+		if key == pygame.K_SPACE:
+			autopilot = ~autopilot;
+		if ~autopilot:
+			if key == pygame.K_UP:  # set forward velocity
+				self.for_back_velocity = S
+			elif key == pygame.K_DOWN:  # set backward velocity
+				self.for_back_velocity = -S
+			elif key == pygame.K_LEFT:  # set left velocity
+				self.left_right_velocity = -S
+			elif key == pygame.K_RIGHT:  # set right velocity
+				self.left_right_velocity = S
+			elif key == pygame.K_w:  # set up velocity
+				self.up_down_velocity = S
+			elif key == pygame.K_s:  # set down velocity
+				self.up_down_velocity = -S
+			elif key == pygame.K_a:  # set yaw clockwise velocity
+				self.yaw_velocity = -S
+			elif key == pygame.K_d:  # set yaw counter clockwise velocity
+				self.yaw_velocity = S
+			elif key == pygame.K_r:		#release R to make the drone flip to the right (flex)
+				self.tello.flip_right
 			
 
 	def keyup(self, key):
@@ -246,16 +334,24 @@ class FrontEnd(object):
 		Arguments:
 			key: pygame key
 		"""
-		
-		if key == pygame.K_t:  # takeoff
-			self.tello.takeoff()
-			self.send_rc_control = True
-		elif key == pygame.K_l:  # land
-			self.tello.land()
-			self.send_rc_control = False
-		elif key == pygame.K_e:		#release E to turn off all motors (for our automated landing)
-			self.tello.emergency()
-			self.send_rc_control = False
+		if ~autopilot:
+			if key == pygame.K_UP or key == pygame.K_DOWN:  # set zero forward/backward velocity
+				self.for_back_velocity = 0
+			elif key == pygame.K_LEFT or key == pygame.K_RIGHT:  # set zero left/right velocity
+				self.left_right_velocity = 0
+			elif key == pygame.K_w or key == pygame.K_s:  # set zero up/down velocity
+				self.up_down_velocity = 0
+			elif key == pygame.K_a or key == pygame.K_d:  # set zero yaw velocity
+				self.yaw_velocity = 0
+			elif key == pygame.K_t:  # takeoff
+				self.tello.takeoff()
+				self.send_rc_control = True
+			elif key == pygame.K_l:  # land
+				self.tello.land()
+				self.send_rc_control = False
+			elif key == pygame.K_e:		#release E to turn off all motors (for our automated landing)
+				self.tello.emergency()
+				self.send_rc_control = False
 
 	def update(self):
 		""" Update routine. Send velocities to Tello."""
@@ -265,8 +361,9 @@ class FrontEnd(object):
 
 
 def main():
-	frontend = FrontEnd()
 
+	frontend = FrontEnd()
+	
 	# run frontend
 	frontend.run()
 
