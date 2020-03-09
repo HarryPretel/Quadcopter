@@ -112,8 +112,8 @@ class FrontEnd(object):
 		ki_xyz = [0,0,0]		#integral constants
 		kd_xyz = [.05,.1,.1]	#derivative constants
 		
-		desired_xyz = [0,0,0]	#desired xyz distance from aruco
-		land_xyz = [0,0,0] 		#range needed within desired to cut motors + attempt landing
+		desired_xyz = [0,0,30]	#desired xyz distance from aruco
+		land_xyz = [100,100,100] 		#range needed within desired to cut motors + attempt landing
 		
 		bias_xyz = [0,0,0]		
 		integral_xyz = [0,0,0]
@@ -193,10 +193,6 @@ class FrontEnd(object):
 				xyz.append(tvec[0][0][0])
 				xyz.append(tvec[0][0][1])
 				xyz.append(tvec[0][0][2])
-
-				# xyz[0] = tvec[0][0][0];
-				# xyz[1] = tvec[0][0][1];
-				# xyz[2] = tvec[0][0][2];
 				
 				plt.subplot(311)
 				plt.plot(t, xyz[0], 'rs')
@@ -234,11 +230,10 @@ class FrontEnd(object):
 				self.up_down_velocity = int(output_xyz[1]);
 				self.for_back_velocity = int(-output_xyz[2]);
 				
-				"""todo: update to arrays
-				if x < desired_x + x_land and x > desired_x - x_land and y < desired_y + y_land and y > desired_y - y_land and z < desired_z + z_land and z > desired_z - z_land:
-					self.tello.emergency()
+				if xyz[0] < desired_xyz[0] + land_xyz[0] and xyz[0] > desired_xyz[0] - land_xyz[0] and xyz[1] < desired_xyz[1] + land_xyz[1] and xyz[1] > xyz[1] - land_xyz[1] and xyz[2] < desired_xyz[2] + land_xyz[2] and xyz[2] > desired_xyz[2] - land_xyz[2]:
+					self.tello.land()
 					self.send_rc_control = False
-				"""
+				
 				
 				
 				print("x: ",xyz[0],"y:",xyz[1],"z:",xyz[2],sep="\t")
@@ -284,7 +279,7 @@ class FrontEnd(object):
 			self.send_rc_control = True
 		elif key == pygame.K_l:  # land
 			self.tello.land()
-			self.send_rc_control = False
+			self.send_rc_control = True
 		elif key == pygame.K_e:		#release E to turn off all motors (for our automated landing)
 			self.tello.emergency()
 			self.send_rc_control = False
