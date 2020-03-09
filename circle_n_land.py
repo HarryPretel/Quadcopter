@@ -6,27 +6,38 @@ import numpy as np
 import time
 import sys
 import os
-import matplotlib.pyplot as plt
 
-#todo: readme for project
+ZHI = 50
+ZLO = 30
+YHI = 5
+YLO = -2.5
+XHI = 2.5 
+XLO = -5
 
-FPS = 100	# 1/FPS seconds = time program pauses between frames
-markerLength = 10 # 2 cm = phone; 10 cm = printout
 
-
-#aruco dictionary
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_1000) #markers w/ id 1-1000 may be used
-arucoParams = cv2.aruco.DetectorParameters_create() 
+#aruco dict
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_1000) 
 
 #calibration setup
 calibrationFile = "calibrationFileName.xml"
 calibrationParams = cv2.FileStorage(calibrationFile, cv2.FILE_STORAGE_READ) 
 camera_matrix = calibrationParams.getNode("cameraMatrix").mat() 
 dist_coeffs = calibrationParams.getNode("distCoeffs").mat() 
+
 r = calibrationParams.getNode("R").mat() 
 new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat() 
 
-#facial detection setup
+
+#might need to be adjusted when used w real arucos
+markerLength = 3 # Here, our measurement unit is centimetre. 
+arucoParams = cv2.aruco.DetectorParameters_create() 
+
+
+# Speed of the drone
+S = 30
+# Frames per second of the pygame window display
+FPS = 25
+
 face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
 
@@ -75,7 +86,7 @@ class FrontEnd(object):
 
 		# Creat pygame window
 		pygame.display.set_caption("Tello video stream")
-		self.screen = pygame.display.set_mode([960, 720]) # ((width, height) of window))
+		self.screen = pygame.display.set_mode([960, 720])
 
 		# Init Tello object that interacts with the Tello drone
 		self.tello = Tello()
@@ -91,46 +102,30 @@ class FrontEnd(object):
 
 		# create update timer
 		pygame.time.set_timer(USEREVENT + 1, 50)
-		
-
 
 	def run(self):
+
 		if not self.tello.connect():
 			print("Tello not connected")
 			return
+
 		if not self.tello.set_speed(self.speed):
 			print("Not set speed to lowest possible")
 			return
-		if not self.tello.streamoff():# In case streaming is on. This happens when we quit this program without the escape key.
+
+		# In case streaming is on. This happens when we quit this program without the escape key.
+		if not self.tello.streamoff():
 			print("Could not stop video stream")
 			return
+
 		if not self.tello.streamon():
 			print("Could not start video stream")
 			return
 
-		kp_xyz = [.15,.5,.4]	#proportional constants
-		ki_xyz = [0,0,0]		#integral constants
-		kd_xyz = [.05,.1,.1]	#derivative constants
-		
-		desired_xyz = [0,0,0]	#desired xyz distance from aruco
-		land_xyz = [0,0,0] 		#range needed within desired to cut motors + attempt landing
-		
-		bias_xyz = [0,0,0]		
-		integral_xyz = [0,0,0]
-		prev_error_xyz = [0,0,0]
-		error_xyz = [0,0,0]
-		
-		plt.ion() #interactive mode on
-		t = 0;	#time (used for plotting)
-		plt.pause(0.001)
-		t = t + 0.001;
-		
-		
-
-
 		frame_read = self.tello.get_frame_read()
 
 		should_stop = False
+		hover = 0
 		while not should_stop:
 
 			for event in pygame.event.get():
@@ -151,8 +146,9 @@ class FrontEnd(object):
 				break
 
 			self.screen.fill([0, 0, 0])
+			frame = cv2.cvtColor(frame_read.frame, cv2.COLOR_BGR2RGB)
 			
-			img = frame_read.frame
+			img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 			gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 			size = img.shape
 			
@@ -160,7 +156,7 @@ class FrontEnd(object):
 			avg1 = np.float32(gray) 
 			avg2 = np.float32(gray) 
 			res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = arucoParams) 
-			imgWithAruco = img # assign imRemapped_color to imgWithAruco directly 
+			imgWithAruco = gray # assign imRemapped_color to imgWithAruco directly 
 			#if len(res[0]) > 0: 
 				#print (res[0]) 
 			
@@ -184,76 +180,50 @@ class FrontEnd(object):
 				imgWithAruco = cv2.warpPerspective(im_src, h, (im_dst.shape[1], im_dst.shape[0])) 
 
 				rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(res[0], markerLength, camera_matrix, dist_coeffs) 
+				print(tvec[0][0][0],tvec[0][0][1],tvec[0][0][2])
 				img = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10) 
 				cameraPose = cameraPoseFromHomography(h) 
-				
-				#PID controller
-				
-				xyz[0] = tvec[0][0][0];
-				xyz[1] = tvec[0][0][1];
-				xyz[2] = tvec[0][0][2];
-				
-				plt.subplot(311)
-				plt.plot(t, x, 'rs')
-				plt.subplot(312)
-				plt.plot(t, y, 'gs');
-				plt.subplot(313)
-				plt.plot(t, z, 'bs');
-				
-				iteration_time = 1/FPS;
-				
-				for i in range(3):
-					error_xyz[i] = desired_xyz[i] - xyz[i]
-					integral_xyz[i] = integral_xyz[i] + (error_xyz[i] * iteration_time)
-					derivative_xyz[i] = (error_xyz[i] - prev_error_xyz[i])
-					output_xyz[i] = kp_xyz[i]*error_xyz[i] + ki_xyz[i]*integral_xyz[i] + kd_xyz[i]*derivative_xyz[i] + bias_xyz[i]
-					prev_error_xyz[i] = error_xyz[i]
-					
-					#speed can only be 10-100, if outside of range, set to 10 or 100
-					if output_xyz[i] > 100:
-						output_xyz[i] = 100;
-					elif output_xyz[i] < -100:
-						output_xyz[i] = -100
-					elif output_xyz[i]<10 and output_xyz[i]>0:
-						output_xyz[i] = 10;
-					elif output_xyz[i]>-10 and output_xyz[i]<0:
-						output_xyz[i] = -10;
-				
-					
-				self.left_right_velocity = int(-output_xyz[0]);
-				self.yaw_velocity = int(-output_xyz[0]);
-				
-				self.up_down_velocity = int(output_xyz[1]);
-				self.for_back_velocity = int(-output_xyz[2]);
-				
-				"""todo: update to arrays
-				if x < desired_x + x_land and x > desired_x - x_land and y < desired_y + y_land and y > desired_y - y_land and z < desired_z + z_land and z > desired_z - z_land:
-					self.tello.emergency()
-					self.send_rc_control = False
-				"""
-				
-				
-				print("x: ",xyz[0],"y:",xyz[1],"z:",xyz[2],sep="\t")
-				
-				#consider using gain scheduling (different constants at different distances)
-				
-				
 
+				if tvec[0][0][1]>YHI:
+					self.up_down_velocity = S
+				elif tvec[0][0][1]<YLO:
+					self.up_down_velocity = -S
+				else:
+					self.up_down_velocity = 0
+				if tvec[0][0][0]>XHI:
+					self.yaw_velocity = -S
+				elif tvec[0][0][0]<XLO:
+					self.yaw_velocity = S
+				else:
+					self.left_right_velocity = 0
+				hover = 0
+			hover = hover + 1
+			if hover==1:
+				self.for_back_velocity = -self.for_back_velocity
+				self.left_right_velocity = -self.left_right_velocity
+				self.up_down_velocity = -self.up_down_velocity
+			faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+			for (x,y,w,h) in faces:
+				img = cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
+				roi_gray = gray[y:y+h, x:x+w]
+				roi_color = img[y:y+h, x:x+w]
+				eyes = eye_cascade.detectMultiScale(roi_gray)
+				for (ex,ey,ew,eh) in eyes:
+					cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
+			
 			
 			img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 			frame = np.rot90(img)
 			frame = np.flipud(frame)
-			frame = pygame.surfarray.make_surface(frame)
 			
+			frame = pygame.surfarray.make_surface(frame)
 			self.screen.blit(frame, (0, 0))
 			pygame.display.update()
-			
-			#xyz graphing
-			plt.show()
-			plt.pause(1 / FPS)
-			t = t + 1/FPS;
+			#cv2.imshow('img', img)
 
-		#deallocate resources.
+			time.sleep(1 / FPS)
+
+		# Call it always before finishing. I deallocate resources.
 		self.tello.end()
 		cv2.destroyAllWindows()
 
