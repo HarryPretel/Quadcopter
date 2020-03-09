@@ -187,25 +187,33 @@ class FrontEnd(object):
 				cameraPose = cameraPoseFromHomography(h) 
 				
 				#PID controller
-				
-				xyz[0] = tvec[0][0][0];
-				xyz[1] = tvec[0][0][1];
-				xyz[2] = tvec[0][0][2];
+
+				xyz = []
+				xyz.append(tvec[0][0][0])
+				xyz.append(tvec[0][0][1])
+				xyz.append(tvec[0][0][2])
+
+				# xyz[0] = tvec[0][0][0];
+				# xyz[1] = tvec[0][0][1];
+				# xyz[2] = tvec[0][0][2];
 				
 				plt.subplot(311)
-				plt.plot(t, x, 'rs')
+				plt.plot(t, xyz[0], 'rs')
 				plt.subplot(312)
-				plt.plot(t, y, 'gs');
+				plt.plot(t, xyz[1], 'gs');
 				plt.subplot(313)
-				plt.plot(t, z, 'bs');
+				plt.plot(t, xyz[2], 'bs');
 				
 				iteration_time = 1/FPS;
 				
+				error_xyz = []
+				derivative_xyz = []
+				output_xyz = []
 				for i in range(3):
-					error_xyz[i] = desired_xyz[i] - xyz[i]
+					error_xyz.append(desired_xyz[i] - xyz[i])
 					integral_xyz[i] = integral_xyz[i] + (error_xyz[i] * iteration_time)
-					derivative_xyz[i] = (error_xyz[i] - prev_error_xyz[i])
-					output_xyz[i] = kp_xyz[i]*error_xyz[i] + ki_xyz[i]*integral_xyz[i] + kd_xyz[i]*derivative_xyz[i] + bias_xyz[i]
+					derivative_xyz.append(error_xyz[i] - prev_error_xyz[i])
+					output_xyz.append(kp_xyz[i]*error_xyz[i] + ki_xyz[i]*integral_xyz[i] + kd_xyz[i]*derivative_xyz[i] + bias_xyz[i])
 					prev_error_xyz[i] = error_xyz[i]
 					
 					#speed can only be 10-100, if outside of range, set to 10 or 100
