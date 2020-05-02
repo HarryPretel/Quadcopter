@@ -11,26 +11,26 @@ ZHI = 50
 ZLO = 30
 YHI = 5
 YLO = -2.5
-XHI = 2.5 
+XHI = 2.5
 XLO = -5
 
 
 #aruco dict
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250) 
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
 
 #calibration setup
 calibrationFile = "calibrationFileName.xml"
-calibrationParams = cv2.FileStorage(calibrationFile, cv2.FILE_STORAGE_READ) 
-camera_matrix = calibrationParams.getNode("cameraMatrix").mat() 
-dist_coeffs = calibrationParams.getNode("distCoeffs").mat() 
+calibrationParams = cv2.FileStorage(calibrationFile, cv2.FILE_STORAGE_READ)
+camera_matrix = calibrationParams.getNode("cameraMatrix").mat()
+dist_coeffs = calibrationParams.getNode("distCoeffs").mat()
 
-r = calibrationParams.getNode("R").mat() 
-new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat() 
+r = calibrationParams.getNode("R").mat()
+new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat()
 
 
 #might need to be adjusted when used w real arucos
-markerLength = 3 # Here, our measurement unit is centimetre. 
-arucoParams = cv2.aruco.DetectorParameters_create() 
+markerLength = 3 # Here, our measurement unit is centimetre.
+arucoParams = cv2.aruco.DetectorParameters_create()
 
 
 # Speed of the drone
@@ -38,35 +38,35 @@ S = 30
 # Frames per second of the pygame window display
 FPS = 25
 
-face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
+face_cascade = cv2.CascadeClassifier('Haarcascades/haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier('Haarcascades/haarcascade_eye.xml')
 
 
-def cameraPoseFromHomography(H): 
-	H1 = H[:, 0] 
-	H2 = H[:, 1] 
-	H3 = np.cross(H1, H2) 
+def cameraPoseFromHomography(H):
+	H1 = H[:, 0]
+	H2 = H[:, 1]
+	H3 = np.cross(H1, H2)
 
-	norm1 = np.linalg.norm(H1) 
-	norm2 = np.linalg.norm(H2) 
-	tnorm = (norm1 + norm2) / 2.0; 
+	norm1 = np.linalg.norm(H1)
+	norm2 = np.linalg.norm(H2)
+	tnorm = (norm1 + norm2) / 2.0;
 
-	T = H[:, 2] / tnorm 
-	return np.mat([H1, H2, H3, T]) 
+	T = H[:, 2] / tnorm
+	return np.mat([H1, H2, H3, T])
 
-def draw(img, corners, imgpts): 
-	imgpts = np.int32(imgpts).reshape(-1, 2) 
+def draw(img, corners, imgpts):
+	imgpts = np.int32(imgpts).reshape(-1, 2)
 
-	# draw ground floor in green 
-	img = cv2.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -3) 
+	# draw ground floor in green
+	img = cv2.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -3)
 
-	# draw pillars in blue color 
-	for i, j in zip(range(4), range(4, 8)): 
-		img = cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]), (255), 3) 
+	# draw pillars in blue color
+	for i, j in zip(range(4), range(4, 8)):
+		img = cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]), (255), 3)
 
-	# draw top layer in red color 
-	img = cv2.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3) 
-	return img 
+	# draw top layer in red color
+	img = cv2.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3)
+	return img
 
 
 class FrontEnd(object):
@@ -147,43 +147,43 @@ class FrontEnd(object):
 
 			self.screen.fill([0, 0, 0])
 			frame = cv2.cvtColor(frame_read.frame, cv2.COLOR_BGR2RGB)
-			
+
 			img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 			gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 			size = img.shape
-			
-			
-			avg1 = np.float32(gray) 
-			avg2 = np.float32(gray) 
-			res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = arucoParams) 
-			imgWithAruco = gray # assign imRemapped_color to imgWithAruco directly 
-			#if len(res[0]) > 0: 
-				#print (res[0]) 
-			
 
-			focal_length = size[1] 
-			center = (size[1]/2, size[0]/2) 
-			camera_matrix = np.array( 
-							[[focal_length, 0, center[0]], 
-							[0, focal_length, center[1]], 
+
+			avg1 = np.float32(gray)
+			avg2 = np.float32(gray)
+			res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = arucoParams)
+			imgWithAruco = gray # assign imRemapped_color to imgWithAruco directly
+			#if len(res[0]) > 0:
+				#print (res[0])
+
+
+			focal_length = size[1]
+			center = (size[1]/2, size[0]/2)
+			camera_matrix = np.array(
+							[[focal_length, 0, center[0]],
+							[0, focal_length, center[1]],
 							[0, 0, 1]], dtype = "double"
-							) 
-			
-			if res[1] != None: # if aruco marker detected 
-				im_src = imgWithAruco 
-				im_dst = imgWithAruco 
-		
-				pts_dst = np.array([[res[0][0][0][0][0], res[0][0][0][0][1]], [res[0][0][0][1][0], res[0][0][0][1][1]], [res[0][0][0][2][0], res[0][0][0][2][1]], [res[0][0][0][3][0], res[0][0][0][3][1]]]) 
-				pts_src = pts_dst 
-				h, status = cv2.findHomography(pts_src, pts_dst) 
+							)
 
-				imgWithAruco = cv2.warpPerspective(im_src, h, (im_dst.shape[1], im_dst.shape[0])) 
+			if res[1] != None: # if aruco marker detected
+				im_src = imgWithAruco
+				im_dst = imgWithAruco
 
-				rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(res[0], markerLength, camera_matrix, dist_coeffs) 
+				pts_dst = np.array([[res[0][0][0][0][0], res[0][0][0][0][1]], [res[0][0][0][1][0], res[0][0][0][1][1]], [res[0][0][0][2][0], res[0][0][0][2][1]], [res[0][0][0][3][0], res[0][0][0][3][1]]])
+				pts_src = pts_dst
+				h, status = cv2.findHomography(pts_src, pts_dst)
+
+				imgWithAruco = cv2.warpPerspective(im_src, h, (im_dst.shape[1], im_dst.shape[0]))
+
+				rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(res[0], markerLength, camera_matrix, dist_coeffs)
 				print(tvec[0][0][0],tvec[0][0][1],tvec[0][0][2])
-				img = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10) 
-				cameraPose = cameraPoseFromHomography(h) 
-				
+				img = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10)
+				cameraPose = cameraPoseFromHomography(h)
+
 				if tvec[0][0][2]>ZHI:
 					self.for_back_velocity = -S
 				elif tvec[0][0][2]<ZLO:
@@ -216,12 +216,12 @@ class FrontEnd(object):
 				eyes = eye_cascade.detectMultiScale(roi_gray)
 				for (ex,ey,ew,eh) in eyes:
 					cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
-			
-			
+
+
 			img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 			frame = np.rot90(img)
 			frame = np.flipud(frame)
-			
+
 			frame = pygame.surfarray.make_surface(frame)
 			self.screen.blit(frame, (0, 0))
 			pygame.display.update()
@@ -238,15 +238,15 @@ class FrontEnd(object):
 		Arguments:
 			key: pygame key
 		"""
-		
-			
+
+
 
 	def keyup(self, key):
 		""" Update velocities based on key released
 		Arguments:
 			key: pygame key
 		"""
-		
+
 		if key == pygame.K_t:  # takeoff
 			self.tello.takeoff()
 			self.send_rc_control = True

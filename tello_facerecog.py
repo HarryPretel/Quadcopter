@@ -10,8 +10,8 @@ S = 60
 # Frames per second of the pygame window display
 FPS = 25
 
-face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
+face_cascade = cv2.CascadeClassifier('Haarcascades/haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier('Haarcascades/haarcascade_eye.xml')
 
 
 class FrontEnd(object):
@@ -91,12 +91,12 @@ class FrontEnd(object):
 
             self.screen.fill([0, 0, 0])
             frame = cv2.cvtColor(frame_read.frame, cv2.COLOR_BGR2RGB)
-            
+
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-			
-			
-			
+
+
+
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
             for (x,y,w,h) in faces:
                 img = cv2.rectangle(img,(x,y),(x+w,y+h),(255,0,0),2)
@@ -105,12 +105,12 @@ class FrontEnd(object):
                 eyes = eye_cascade.detectMultiScale(roi_gray)
                 for (ex,ey,ew,eh) in eyes:
                     cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
-			
-			
+
+
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             frame = np.rot90(img)
             frame = np.flipud(frame)
-			
+
             frame = pygame.surfarray.make_surface(frame)
             self.screen.blit(frame, (0, 0))
             pygame.display.update()
@@ -145,7 +145,7 @@ class FrontEnd(object):
             self.yaw_velocity = S
         elif key == pygame.K_r:		#release R to make the drone flip to the right (flex)
             self.tello.flip_right
-			
+
 
     def keyup(self, key):
         """ Update velocities based on key released

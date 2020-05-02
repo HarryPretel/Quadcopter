@@ -10,20 +10,20 @@ import os
 autopilot = False;
 
 #might need to be adjusted when used w real arucos
-markerLength = 10 # Here, our measurement unit is centimetre. 
-arucoParams = cv2.aruco.DetectorParameters_create() 
+markerLength = 10 # Here, our measurement unit is centimetre.
+arucoParams = cv2.aruco.DetectorParameters_create()
 
 #aruco dict
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250) 
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
 
 #calibration setup
 calibrationFile = "calibrationFileName.xml"
-calibrationParams = cv2.FileStorage(calibrationFile, cv2.FILE_STORAGE_READ) 
-camera_matrix = calibrationParams.getNode("cameraMatrix").mat() 
-dist_coeffs = calibrationParams.getNode("distCoeffs").mat() 
+calibrationParams = cv2.FileStorage(calibrationFile, cv2.FILE_STORAGE_READ)
+camera_matrix = calibrationParams.getNode("cameraMatrix").mat()
+dist_coeffs = calibrationParams.getNode("distCoeffs").mat()
 
-r = calibrationParams.getNode("R").mat() 
-new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat() 
+r = calibrationParams.getNode("R").mat()
+new_camera_matrix = calibrationParams.getNode("newCameraMatrix").mat()
 
 # Speed of the drone
 S = 60
@@ -32,35 +32,35 @@ S = 60
 FPS = 25
 
 
-face_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_frontalface_default.xml')
-eye_cascade = cv2.CascadeClassifier('../../../../../Miniconda3/Lib/site-packages/cv2/data/haarcascade_eye.xml')
+face_cascade = cv2.CascadeClassifier('Haarcascades/haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier('Haarcascades/haarcascade_eye.xml')
 
 
-def cameraPoseFromHomography(H): 
-	H1 = H[:, 0] 
-	H2 = H[:, 1] 
-	H3 = np.cross(H1, H2) 
+def cameraPoseFromHomography(H):
+	H1 = H[:, 0]
+	H2 = H[:, 1]
+	H3 = np.cross(H1, H2)
 
-	norm1 = np.linalg.norm(H1) 
-	norm2 = np.linalg.norm(H2) 
-	tnorm = (norm1 + norm2) / 2.0; 
+	norm1 = np.linalg.norm(H1)
+	norm2 = np.linalg.norm(H2)
+	tnorm = (norm1 + norm2) / 2.0;
 
-	T = H[:, 2] / tnorm 
-	return np.mat([H1, H2, H3, T]) 
+	T = H[:, 2] / tnorm
+	return np.mat([H1, H2, H3, T])
 
-def draw(img, corners, imgpts): 
-	imgpts = np.int32(imgpts).reshape(-1, 2) 
+def draw(img, corners, imgpts):
+	imgpts = np.int32(imgpts).reshape(-1, 2)
 
-	# draw ground floor in green 
-	img = cv2.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -3) 
+	# draw ground floor in green
+	img = cv2.drawContours(img, [imgpts[:4]], -1, (0, 255, 0), -3)
 
-	# draw pillars in blue color 
-	for i, j in zip(range(4), range(4, 8)): 
-		img = cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]), (255), 3) 
+	# draw pillars in blue color
+	for i, j in zip(range(4), range(4, 8)):
+		img = cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]), (255), 3)
 
-	# draw top layer in red color 
-	img = cv2.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3) 
-	return img 
+	# draw top layer in red color
+	img = cv2.drawContours(img, [imgpts[4:]], -1, (0, 0, 255), 3)
+	return img
 
 
 class FrontEnd(object):
@@ -93,21 +93,21 @@ class FrontEnd(object):
 		self.speed = 10
 
 		self.send_rc_control = False
-		
-		
+
+
 		# create update timer
 		pygame.time.set_timer(USEREVENT + 1, 50)
 
 	def run(self):
-	
+
 		kp_x = .25;
 		ki_x = 0;
 		kd_x =  .05;
-		
+
 		kp_y = .5;
 		ki_y = 0;
 		kd_y =  .1;
-		
+
 		kp_z = .5;
 		ki_z = 0;
 		kd_z =  .1;
@@ -129,8 +129,8 @@ class FrontEnd(object):
 		desired_x = 0;
 		desired_y = 0;
 		desired_z = 75;
-		
-		
+
+
 
 		if not self.tello.connect():
 			print("Tello not connected")
@@ -150,7 +150,7 @@ class FrontEnd(object):
 			return
 
 		frame_read = self.tello.get_frame_read()
-		
+
 
 		should_stop = False
 		while not should_stop:
@@ -174,69 +174,69 @@ class FrontEnd(object):
 
 			self.screen.fill([0, 0, 0])
 			frame = cv2.cvtColor(frame_read.frame, cv2.COLOR_BGR2RGB)
-			
+
 			img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 			gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 			size = img.shape
-			
-			
-			avg1 = np.float32(gray) 
-			avg2 = np.float32(gray) 
-			res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = arucoParams) 
-			imgWithAruco = gray # assign imRemapped_color to imgWithAruco directly 
-			#if len(res[0]) > 0: 
-				#print (res[0]) 
-			
 
-			focal_length = size[1] 
-			center = (size[1]/2, size[0]/2) 
-			camera_matrix = np.array( 
-							[[focal_length, 0, center[0]], 
-							[0, focal_length, center[1]], 
+
+			avg1 = np.float32(gray)
+			avg2 = np.float32(gray)
+			res = cv2.aruco.detectMarkers(gray, aruco_dict, parameters = arucoParams)
+			imgWithAruco = gray # assign imRemapped_color to imgWithAruco directly
+			#if len(res[0]) > 0:
+				#print (res[0])
+
+
+			focal_length = size[1]
+			center = (size[1]/2, size[0]/2)
+			camera_matrix = np.array(
+							[[focal_length, 0, center[0]],
+							[0, focal_length, center[1]],
 							[0, 0, 1]], dtype = "double"
-							) 
+							)
 
-			if res[1] != None: # if aruco marker detected 
-				im_src = imgWithAruco 
-				im_dst = imgWithAruco 
-		
-				pts_dst = np.array([[res[0][0][0][0][0], res[0][0][0][0][1]], [res[0][0][0][1][0], res[0][0][0][1][1]], [res[0][0][0][2][0], res[0][0][0][2][1]], [res[0][0][0][3][0], res[0][0][0][3][1]]]) 
-				pts_src = pts_dst 
-				h, status = cv2.findHomography(pts_src, pts_dst) 
+			if res[1] != None: # if aruco marker detected
+				im_src = imgWithAruco
+				im_dst = imgWithAruco
 
-				imgWithAruco = cv2.warpPerspective(im_src, h, (im_dst.shape[1], im_dst.shape[0])) 
+				pts_dst = np.array([[res[0][0][0][0][0], res[0][0][0][0][1]], [res[0][0][0][1][0], res[0][0][0][1][1]], [res[0][0][0][2][0], res[0][0][0][2][1]], [res[0][0][0][3][0], res[0][0][0][3][1]]])
+				pts_src = pts_dst
+				h, status = cv2.findHomography(pts_src, pts_dst)
 
-				rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(res[0], markerLength, camera_matrix, dist_coeffs) 
+				imgWithAruco = cv2.warpPerspective(im_src, h, (im_dst.shape[1], im_dst.shape[0]))
+
+				rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(res[0], markerLength, camera_matrix, dist_coeffs)
 				print(tvec[0][0][0],tvec[0][0][1],tvec[0][0][2])
-				img = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10) 
-				cameraPose = cameraPoseFromHomography(h) 
+				img = cv2.aruco.drawAxis(imgWithAruco, camera_matrix, dist_coeffs, rvec, tvec, 10)
+				cameraPose = cameraPoseFromHomography(h)
 
 				if autopilot:
 					#PID controller
 					x = tvec[0][0][0];
 					y = tvec[0][0][1];
 					z = tvec[0][0][2];
-				
+
 					iteration_time = 1/FPS;
-				
+
 					error_x = desired_x - x;
 					integral_x = integral_x + (error_x * iteration_time );
 					derivative_x = (error_x - prev_error_x) / iteration_time;
 					output_x = kp_x*error_x + ki_x*integral_x + kd_x*derivative_x + bias_x;
 					prev_error_x = error_x;
-				
+
 					error_y = desired_y - y;
 					integral_y = integral_y + (error_y * iteration_time );
 					derivative_y = (error_y - prev_error_y) / iteration_time;
 					output_y = kp_y*error_y + ki_y*integral_y + kd_y*derivative_y + bias_y;
 					prev_error_y = error_y;
-				
+
 					error_z = desired_z - z;
 					integral_z = integral_z + (error_z * iteration_time );
 					derivative_z = (error_z - prev_error_z) / iteration_time;
 					output_z = kp_z*error_z + ki_z*integral_z + kd_z*derivative_z + bias_z;
 					prev_error_z = error_z;
-				
+
 					#speed can only be 10-100, if outside of range, set to 10 or 100
 					if output_x>100:
 						output_x = 100;
@@ -248,7 +248,7 @@ class FrontEnd(object):
 					elif output_x>-10 and output_x<0:
 						output_x = -10;
 						"""
-				
+
 					if output_y>100:
 						output_y = 100;
 					elif output_y<-100:
@@ -257,7 +257,7 @@ class FrontEnd(object):
 						output_y = 10;
 					elif output_y>-10 and output_y<0:
 						output_y = -10;
-				
+
 					if output_z>100:
 						output_z = 100;
 					elif output_z<-100:
@@ -266,12 +266,12 @@ class FrontEnd(object):
 						output_z = 10;
 					elif output_z>-10 and output_z<0:
 						output_z = -10;
-				
-					
+
+
 					self.left_right_velocity = int(-output_x);
 					if output_x>10 or output_x<-10:
 						self.yaw_velocity = int(-output_x);
-				
+
 					self.up_down_velocity = int(output_y);
 					self.for_back_velocity = int(-output_z);
 
@@ -284,12 +284,12 @@ class FrontEnd(object):
 				eyes = eye_cascade.detectMultiScale(roi_gray)
 				for (ex,ey,ew,eh) in eyes:
 					cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
-			
-			
+
+
 			img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 			frame = np.rot90(img)
 			frame = np.flipud(frame)
-			
+
 			frame = pygame.surfarray.make_surface(frame)
 			self.screen.blit(frame, (0, 0))
 			pygame.display.update()
@@ -327,7 +327,7 @@ class FrontEnd(object):
 				self.yaw_velocity = S
 			elif key == pygame.K_r:		#release R to make the drone flip to the right (flex)
 				self.tello.flip_right
-			
+
 
 	def keyup(self, key):
 		""" Update velocities based on key released
@@ -363,7 +363,7 @@ class FrontEnd(object):
 def main():
 
 	frontend = FrontEnd()
-	
+
 	# run frontend
 	frontend.run()
 
