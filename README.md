@@ -32,7 +32,7 @@ $ pip install opencv-python
 ```
 To install **PyGame**:
 ```
-$ pip install opencv-python
+$ pip install pygame
 ```
 
 # Connecting to the Drone
