@@ -47,7 +47,9 @@ After printing, tape your aruco marker somewhere visible to the drone immediatel
 You may move the marker, the drone will try to hover a certain distance away from the marker, once it is within that range and stable, it will land. If you don't want the drone to land, make sure that you don't it to get too close to the marker.
 
 To begin ***semi-autonomous flight***, do the following after connecting to the drone:
-```$ python PID.py ```
+```
+$ python PID.py 
+```
 Press T to takeoff once the application has established a connection to the drone's camera. The drone will take off, while looking for an aruco marker. If an aruco marker is found, it will use the PID controller implemented to land a certain distance from the marker. These distance parameters, as well as parameters affecting the behavior of the PID controller can be set on lines 111-121 in PID.py.
 
 ### Manual Control:
@@ -65,7 +67,7 @@ $ python manual_control.py
 ```
 
 ### Easter Eggs:
-There are many files in this repo that were used in the development of 
+There are many files in this repo that were used in the development of this application. Look around, some of them have to do with computer vision, some with PID control, others with connecting to the drone. Keep in mind that these files are not maintained and may be broken.
 
 # Troubleshooting:
 1. Verify that all packages have been installed correctly.
@@ -74,6 +76,5 @@ There are many files in this repo that were used in the development of
 4. Inspect the drone for any damage to propellers, body, etc.
 
 # References
-
+***BIG*** shoutout to damiafuentes and his work on allowing us to control the DJI Tello with python. Check out the repo that this project is based on here:
  - https://github.com/damiafuentes/DJITelloPy
- - https://dl-cdn.ryzerobotics.com/downloads/Tello/Tello%20SDK%202.0%20User%20Guide.pdf
