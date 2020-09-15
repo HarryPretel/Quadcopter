@@ -43,7 +43,7 @@ def cameraPoseFromHomography(H):
 
 	norm1 = np.linalg.norm(H1)
 	norm2 = np.linalg.norm(H2)
-	tnorm = (norm1 + norm2) / 2.0;
+	tnorm = (norm1 + norm2) / 2.0
 
 	T = H[:, 2] / tnorm
 	return np.mat([H1, H2, H3, T])
